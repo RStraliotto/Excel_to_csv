@@ -1,74 +1,65 @@
-<!--**
- * @author Cesar Szpak - Celke -   cesar@celke.com.br
- * @pagina desenvolvida usando framework bootstrap,
- * o código é aberto e o uso é free,
- * porém lembre -se de conceder os créditos ao desenvolvedor.
- *-->
- <?php
-	session_start();
+<?php
+// Inclua a biblioteca PHPExcel
+require 'PHPExcel/PHPExcel.php';
 
-	require_once('inc/seguranca.php');
-include("inc/class_mysql.php");
-$mysql = new MySQL();
+// Caminho para o arquivo Excel de entrada
+$arquivo_excel = 'caminho/para/seuarquivo.xlsx';
+
+// Carregue o arquivo Excel
+$objPHPExcel = PHPExcel_IOFactory::load($arquivo_excel);
+
+// Obtenha as colunas do arquivo Excel
+$colunas = $objPHPExcel->getActiveSheet()->toArray(null, true, true, true);
+
+// Exiba as colunas
+echo '<h1>Colunas do Arquivo Excel:</h1>';
+echo '<ul>';
+foreach ($colunas[1] as $coluna => $valor) {
+    echo '<li>' . $coluna . '</li>';
+}
+echo '</ul>';
+
+// Verifique se o formulário foi enviado
+if (isset($_POST['ordenar'])) {
+    // Obtenha a ordem desejada das colunas do formulário
+    $ordem = $_POST['ordem'];
+
+    // Crie um novo arquivo CSV com as colunas na ordem desejada
+    $novo_arquivo_csv = 'caminho/para/novoarquivo.csv';
+    $arquivo = fopen($novo_arquivo_csv, 'w');
+
+    // Escreva o cabeçalho do CSV na ordem desejada
+    foreach ($ordem as $coluna) {
+        fputcsv($arquivo, [$coluna]);
+    }
+
+    // Escreva os dados do Excel no CSV
+    foreach ($colunas as $linha) {
+        $linha_csv = [];
+        foreach ($ordem as $coluna) {
+            $linha_csv[] = $linha[$coluna];
+        }
+        fputcsv($arquivo, $linha_csv);
+    }
+
+    fclose($arquivo);
+
+    echo '<p>Arquivo CSV gerado com sucesso: <a href="' . $novo_arquivo_csv . '">Download CSV</a></p>';
+}
 ?>
-<!DOCTYPE html>
-<html lang="pt-br">
-	<head>
-		<meta charset="utf-8">
-		<title>Contato</title>
-	<head>
-	<body>
-		<?php
-		// Definimos o nome do arquivo que será exportado
-		$arquivo = 'relatorio.xls';
-		
-		// Criamos uma tabela HTML com o formato da planilha
-		$html = '';
-		$html .= '<table border="1">';
-		$html .= '<tr>';
-		$html .= '<td colspan="5">Planilha Mensagem de Contatos</tr>';
-		$html .= '</tr>';
-		
-		
-		$html .= '<tr>';
-		$html .= '<td><b>ID</b></td>';
-		$html .= '<td><b>Fornecedor</b></td>';
-		$html .= '<td><b>Nome do Software</b></td>';
-		$html .= '<td><b>Versão</b></td>';
-		$html .= '<td><b>Licença</b></td>';
-		$html .= '<td><b>Data Venc</b></td>';
-		$html .= '<td><b>Contrato</b></td>';
-		$html .= '<td><b>NºNF</b></td>';
-		$html .= '</tr>';
-		
-		
-		//Selecionar tos itens da tabela 
-		$result_relatorio = "SELECT f.nome as nomefor,p.status,p.id,p.nome,p.versao,l.idlicenca,l.licenca,l.venc,c.nro,c.nrofatura FROM fornecedor f LEFT JOIN produto p ON f.idfornecedor = p.fornecedor JOIN licenca l on p.id = l.idproduto join contratos c on l.contrato = c.idcontratos;";
-		$resultado_relatorio = mysqli_query($conn , $result_relatorio);
-		
-		while($row_relatorio = mysqli_fetch_assoc($resultado_relatorio)){
-			$html .= '<tr>';
-			$html .= '<td>'.$row_relatorio["nome"].'</td>';
-			$html .= '<td>'.$row_relatorio["versao"].'</td>';
-			$html .= '<td>'.$row_relatorio["licenca"].'</td>';
-			$html .= '<td>'.$row_relatorio["venc"].'</td>';
-			$html .= '<td>'.$row_relatorio["nro"].'</td>';
-			$html .= '<td>'.$row_relatorio["nrofatura"].'</td>';
-			$data = date('d/m/Y H:i:s',strtotime($row_relatorio["created"]));
-			$html .= '<td>'.$data.'</td>';
-			$html .= '</tr>';
-			;
-		}
-		// Configurações header para forçar o download
-		header ("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
-		header ("Last-Modified: " . gmdate("D,d M YH:i:s") . " GMT");
-		header ("Cache-Control: no-cache, must-revalidate");
-		header ("Pragma: no-cache");
-		header ("Content-type: application/x-msexcel");
-		header ("Content-Disposition: attachment; filename=\"{$arquivo}\"" );
-		header ("Content-Description: PHP Generated Data" );
-		// Envia o conteúdo do arquivo
-		echo $html;
-		exit; ?>
-	</body>
-</html>
+
+<!-- Formulário para escolher a ordem das colunas -->
+<h2>Escolha a ordem das colunas:</h2>
+<form method="post">
+    <ul>
+        <?php foreach ($colunas[1] as $coluna => $valor) { ?>
+            <li>
+                <label>
+                    <input type="checkbox" name="ordem[]" value="<?php echo $coluna; ?>" checked>
+                    <?php echo $coluna; ?>
+                </label>
+            </li>
+        <?php } ?>
+    </ul>
+    <input type="submit" name="ordenar" value="Ordenar e Salvar em CSV">
+</form>
